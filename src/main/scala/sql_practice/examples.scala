@@ -87,4 +87,83 @@ object examples {
       .sort($"diffEmp".desc)
       .show(20)
   }
+
+  def exec4(): Unit = {
+    val spark = SessionBuilder.buildSession()
+    import spark.implicits._
+
+    val toursDF = spark.read
+      .option("multiline", true)
+      .option("mode", "PERMISSIVE")
+      .json("data/input/tours.json")
+    toursDF.show
+
+    //1. How many unique levels of difficulties? (in one table)
+    //   There is 4 levels
+    toursDF.select($"tourDifficulty")
+      .distinct()
+      .show(20)
+
+    //2. What is the min/max.avg of tour prices? (in one table)
+    // min:   max:    avg:
+    toursDF.agg(
+      min($"tourPrice").alias("min price"),
+      max($"tourPrice").alias("min price"),
+      avg($"tourPrice").alias("min price"))
+      .show()
+
+    //3. What is the min/max/avg
+    toursDF
+      .groupBy($"tourDifficulty")
+      .agg(
+      min($"tourPrice").alias("min Price"),
+      max($"tourPrice").alias("min Price"),
+      avg($"tourPrice").alias("min Price"))
+      .show()
+
+    //4. What is the min/max/avg of price and min/max/avg of duration (length)
+    // for each level of difficulties? (in one table)
+    toursDF
+      .groupBy($"tourDifficulty")
+      .agg(
+        min($"tourPrice").alias("min Price"),
+        max($"tourPrice").alias("max Price"),
+        avg($"tourPrice").alias("avg Price"),
+        min($"tourLength").alias("min Length"),
+        max($"tourLength").alias("max Length"),
+        avg($"tourLength").alias("avg Length"))
+      .show()
+
+    //5. Display the top 10 "tourTags" (use explode)
+    toursDF
+      .select(explode($"tourTags"))
+      .groupBy($"col")
+      .count()
+      .orderBy($"count".desc)
+      .show(10)
+
+    //6. Relationship between top 10 "tourTags" and "tourDifficulty"
+    toursDF
+      .select(explode($"tourTags"), $"tourDifficulty")
+      .groupBy($"col", $"tourDifficulty")
+      .count()
+      .orderBy($"count".desc)
+      .show(10)
+
+    //7. What is the min/max/avg of price in "tourTags" and "tourDifficulty"
+    // relationship? (Sort by average)
+    toursDF
+      .select(explode($"tourTags"), $"tourDifficulty", $"tourPrice")
+      .groupBy($"col", $"tourDifficulty")
+      .agg(
+        min("tourPrice").alias("min Price"),
+        max("tourPrice").alias("max Price"),
+        avg("tourPrice").alias("avg Price"))
+      .sort($"avg Price")
+      .show()
+
+
+
+  }
+
 }
