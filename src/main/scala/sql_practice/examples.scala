@@ -32,9 +32,42 @@ object examples {
       .filter($"tourPrice" > 500)
       .orderBy($"tourPrice".desc)
       .show(20)
-
-
   }
+
+  def exec2(): Unit = {
+    val spark = SessionBuilder.buildSession()
+    import spark.implicits._
+
+    val demoDF = spark.read
+      .option("mode", "PERMISSIVE")
+      .json("data/input/demographie_par_commune.json")
+    demoDF.show()
+
+    //1. How many inhabitants has France?
+    demoDF.select(sum( $"Population")).show()
+
+    //2. What are the top highly populated departments in France? (Just a code name)
+    demoDF.select($"Departement", $"Population")
+      .orderBy( $"Population".desc)
+      .show(10)
+
+    //3. What are the top highly populated departments in France? (Use join to display the names)
+    val demoNameDF = spark.read
+      .option("mode", "PERMISSIVE")
+      .option("delimiter", ",")
+      .csv("data/input/departements.txt")
+      .withColumnRenamed("_c0", "Nom")
+      .withColumnRenamed("_c1", "Departement_code")
+    demoNameDF.show()
+
+    val join = demoDF.join(demoNameDF, demoDF("Departement") === demoNameDF("Departement_code"))
+
+    join
+      .select($"Nom",$"Departement", $"Population")
+      .orderBy( $"Population".desc)
+      .show(10)
+  }
+
 
   def exec3(): Unit = {
     val spark = SessionBuilder.buildSession()
@@ -161,8 +194,6 @@ object examples {
         avg("tourPrice").alias("avg Price"))
       .sort($"avg Price")
       .show()
-
-
 
   }
 
